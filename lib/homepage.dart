@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'login.dart';
+import 'AppointmentScreen.dart';
+import 'AppointmentHistoryScreen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -6,19 +10,121 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Дээд талын хэсэг (AppBar)
-      appBar: AppBar(
-        title: const Text('Home Page'),
-        backgroundColor: Colors.blue, // Өнгийг нь өөрчилж болно
-      ),
-      // Гол цагаан хэсэг
-      body: Container(
-        color: Colors.white,
-        child: const Center(
-          child: Text(
-            'Та амжилттай нэвтэрлээ!',
-            style: TextStyle(fontSize: 20, color: Colors.grey),
+      backgroundColor: const Color(0xFFE8F1FF),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: Column(
+            children: [
+              // Дээд хэсэг
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const SizedBox(width: 40),
+                  Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF1D61FF),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.favorite,
+                            color: Colors.white, size: 30),
+                      ),
+                      const SizedBox(height: 10),
+                      const Text(
+                        'Эмнэлгийн\nсонголт',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1A2B47),
+                        ),
+                      ),
+                    ],
+                  ),
+                  // Гарах товч
+                  IconButton(
+                    icon: const Icon(Icons.logout_rounded,
+                        color: Color(0xFF1D61FF), size: 28),
+                    onPressed: () async {
+                      await Supabase.instance.client.auth.signOut();
+                      if (!context.mounted) return;
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (_) => LoginScreen()),
+                      );
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 30),
+
+              // Цаг захиалах
+              _buildMenuCard(
+                context,
+                icon: Icons.calendar_month_rounded,
+                label: 'Цаг захиалах',
+                color: const Color(0xFF1D61FF),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => AppointmentScreen()),
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+
+              // Цаг авалтын түүх
+              _buildMenuCard(
+                context,
+                icon: Icons.description_rounded,
+                label: 'Цаг авалтын түүх',
+                color: const Color(0xFF22C55E),
+                onTap: () {
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => AppointmentHistoryScreen()));
+                },
+              ),
+            ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMenuCard(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 50),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: Colors.white, size: 60),
+            const SizedBox(height: 16),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
-import 'dart:io' show Platform;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'homepage.dart';
+import 'Staffhomepage.dart';
+import 'Register.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -12,277 +12,270 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController passwordController = TextEditingController();
-
-  bool isLoading = false;
-  // Supabase client instance
-  final supabase = Supabase.instance.client;
-
-  Future<void> logLoginInfo() async {
-    try {
-      // Утасны мэдээллийг тодорхойлох
-      String device = "Unknown Device";
-      if (!kIsWeb) {
-        if (Platform.isAndroid) {
-          device = "Android Phone";
-        } else if (Platform.isIOS) {
-          device = "iPhone";
-        }
-      } else {
-        device = "Web Browser";
-      }
-
-      // Supabase рүү өгөгдлөө илгээх
-      final authId = emailController.text.trim();
-      final isEmail = authId.contains('@');
-
-      await supabase.from('login_logs').insert({
-        'email': isEmail ? authId : null,
-        'phone': !isEmail ? authId : null, // Имэйл биш бол утас гэж үзнэ
-        'device_info': device,
-      });
-
-      if (kDebugMode) {
-        print("Нэвтрэлтийн мэдээлэл хадгалагдлаа!");
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print("Алдаа гарлаа: $e");
-      }
-    }
-  }
-
-  void _handleLogin() async {
-    setState(() {
-      isLoading = true;
-    });
-
-    try {
-      final authId = emailController.text.trim();
-      final isEmail = authId.contains('@');
-
-      // 1. Нэвтрэх логик
-      await supabase.auth.signInWithPassword(
-        email: isEmail ? authId : null,
-        phone: !isEmail ? authId : null,
-        password: passwordController.text,
-      );
-
-      // 2. Хэрэв амжилттай бол мэдээллээ хадгалах
-      await logLoginInfo();
-
-      // 3. Дараагийн хуудас руу шилжих
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
-        );
-      }
-    } on AuthException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Нэвтрэхэд алдаа гарлаа: ${e.message}')),
-        );
-      }
-    } catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Алдаа: $error')),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          isLoading = false;
-        });
-      }
-    }
-  }
+  bool isUser = true;
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
 
   @override
   void dispose() {
-    emailController.dispose();
-    passwordController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        width: double.infinity,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            colors: [
-              Colors.blue[900]!, // Цэнхэр
-              Colors.blue[800]!,
-              Colors.blue[400]!, // Цайвар цэнхэр
-            ],
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            const SizedBox(height: 80),
-            const Padding(
-              padding: EdgeInsets.all(30),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text("Login",
-                      style: TextStyle(color: Colors.white, fontSize: 40)),
-                  SizedBox(height: 10),
-                  Text("Welcome Back",
-                      style: TextStyle(color: Colors.white, fontSize: 20)),
-                ],
-              ),
+      backgroundColor: const Color(0xFFE8F1FF),
+      body: Center(
+        child: SingleChildScrollView(
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 25),
+            padding: const EdgeInsets.all(30),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  spreadRadius: 5,
+                ),
+              ],
             ),
-            const SizedBox(height: 20),
-            Expanded(
-              child: Container(
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(60),
-                    topRight: Radius.circular(60),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(15),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF1D61FF),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.lock_outline,
+                      color: Colors.white, size: 40),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Эмнэлгийн Систем',
+                  style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1A2B47)),
+                ),
+                const Text('Нэвтрэх',
+                    style: TextStyle(color: Colors.grey, fontSize: 16)),
+                const SizedBox(height: 30),
+                Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE9ECEF),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => setState(() => isUser = true),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            decoration: BoxDecoration(
+                              color: isUser ? Colors.white : Colors.transparent,
+                              borderRadius: BorderRadius.circular(10),
+                              boxShadow: isUser
+                                  ? [
+                                      BoxShadow(
+                                          color: Colors.black
+                                              .withValues(alpha: 0.1),
+                                          blurRadius: 4)
+                                    ]
+                                  : null,
+                            ),
+                            alignment: Alignment.center,
+                            child: const Text('Үйлчлүүлэгч',
+                                style: TextStyle(fontWeight: FontWeight.w600)),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => setState(() => isUser = false),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            decoration: BoxDecoration(
+                              color:
+                                  !isUser ? Colors.white : Colors.transparent,
+                              borderRadius: BorderRadius.circular(10),
+                              boxShadow: !isUser
+                                  ? [
+                                      BoxShadow(
+                                          color: Colors.black
+                                              .withValues(alpha: 0.1),
+                                          blurRadius: 4)
+                                    ]
+                                  : null,
+                            ),
+                            alignment: Alignment.center,
+                            child: const Text('Дотоод ажилтан',
+                                style: TextStyle(fontWeight: FontWeight.w600)),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.all(30),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      children: <Widget>[
-                        const SizedBox(height: 40),
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(10),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Color.fromRGBO(225, 95, 27, .3),
-                                blurRadius: 20,
-                                offset: Offset(0, 10),
-                              )
-                            ],
-                          ),
-                          child: Column(
-                            children: <Widget>[
-                              Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  border: Border(
-                                      bottom:
-                                          BorderSide(color: Colors.grey[200]!)),
-                                ),
-                                child: TextField(
-                                  controller: emailController,
-                                  decoration: const InputDecoration(
-                                    hintText: "Email or Phone number",
-                                    hintStyle: TextStyle(color: Colors.grey),
-                                    border: InputBorder.none,
-                                  ),
-                                ),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  border: Border(
-                                      bottom:
-                                          BorderSide(color: Colors.grey[200]!)),
-                                ),
-                                child: TextField(
-                                  controller: passwordController,
-                                  obscureText: true,
-                                  decoration: const InputDecoration(
-                                    hintText: "Password",
-                                    hintStyle: TextStyle(color: Colors.grey),
-                                    border: InputBorder.none,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 30),
-                        const Text("Continue with social media",
-                            style: TextStyle(color: Colors.grey)),
-                        const SizedBox(height: 30),
-                        GestureDetector(
-                          onTap: isLoading ? null : _handleLogin,
-                          child: Container(
-                            height: 50,
-                            margin: const EdgeInsets.symmetric(horizontal: 50),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(50),
-                              color: isLoading ? Colors.grey : Colors.blue[900],
-                            ),
-                            child: Center(
-                              child: isLoading
-                                  ? const SizedBox(
-                                      height: 20,
-                                      width: 20,
-                                      child: CircularProgressIndicator(
-                                          color: Colors.white, strokeWidth: 2),
-                                    )
-                                  : const Text(
-                                      "Login",
-                                      style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold),
-                                    ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 30),
-                        Row(
-                          children: <Widget>[
-                            Expanded(
-                              child: Container(
-                                height: 50,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(50),
-                                  color: Colors.blue,
-                                ),
-                                child: const Center(
-                                  child: Text("Facebook",
-                                      style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold)),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 30),
-                            Expanded(
-                              child: Container(
-                                height: 50,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(50),
-                                  color: Colors.black,
-                                ),
-                                child: const Center(
-                                  child: Text("Github",
-                                      style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold)),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                const SizedBox(height: 30),
+                _buildInputField(
+                  label: 'Нэвтрэх нэр',
+                  icon: Icons.person_outline,
+                  hint: 'Нэвтрэх нэр',
+                  controller: _emailController,
+                ),
+                const SizedBox(height: 20),
+                _buildInputField(
+                  label: 'Нууц үг',
+                  icon: Icons.lock_outline,
+                  hint: 'Нууц үг',
+                  isPassword: true,
+                  controller: _passwordController,
+                ),
+                const SizedBox(height: 25),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _handleLogin,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF1D61FF),
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                    ),
+                    child: const Text(
+                      'Нэвтрэх',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
-              ),
+                const SizedBox(height: 25),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text('Бүртгэлгүй юу? '),
+                    TextButton(
+                      onPressed: _goToRegister,
+                      style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                      child: const Text(
+                        'Бүртгүүлэх',
+                        style: TextStyle(
+                            color: Color(0xFF1D61FF),
+                            fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+                const Divider(height: 40, thickness: 0.5),
+                const Text(
+                  'Туршилтын хувьд:\nҮйлчлүүлэгч: demo@mail.com / demo123\nДотоод: admin@mail.com / admin123',
+                  textAlign: TextAlign.center,
+                  style:
+                      TextStyle(color: Colors.grey, fontSize: 12, height: 1.5),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
+    );
+  }
+
+  void _goToRegister() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => RegisterScreen()),
+    );
+  }
+
+  Future<void> _handleLogin() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Мэдээллээ бүрэн оруулна уу')),
+      );
+      return;
+    }
+
+    try {
+      // Нэвтрэх нэрийг email болгох
+      final fakeEmail = email.contains('@') ? email : '$email@hospital.mn';
+      final response = await Supabase.instance.client.auth
+          .signInWithPassword(email: fakeEmail, password: password);
+
+      if (!mounted) return;
+
+      if (response.user != null) {
+        final profile = await Supabase.instance.client
+            .from('profiles')
+            .select('role')
+            .eq('id', response.user!.id)
+            .single();
+
+        final role = profile['role'];
+        if (!mounted) return;
+
+        if (role == 'staff') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => StaffHomeScreen()),
+          );
+        } else {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => HomeScreen()),
+          );
+        }
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Алдаа: ${e.toString()}')),
+      );
+    }
+  }
+
+  Widget _buildInputField({
+    required String label,
+    required IconData icon,
+    required String hint,
+    bool isPassword = false,
+    required TextEditingController controller,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+        const SizedBox(height: 8),
+        TextField(
+          controller: controller,
+          obscureText: isPassword,
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: const TextStyle(color: Colors.grey),
+            prefixIcon: Icon(icon, color: Colors.grey),
+            filled: true,
+            fillColor: const Color(0xFFF1F3F5),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide.none,
+            ),
+            contentPadding: const EdgeInsets.symmetric(vertical: 15),
+          ),
+        ),
+      ],
     );
   }
 }
