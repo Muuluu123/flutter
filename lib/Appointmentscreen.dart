@@ -127,7 +127,7 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
 
       await Supabase.instance.client.from('appointments').insert({
         'patient_id': patientData['id'],
-        'appointment_date': appointmentDateTime.toIso8601String(),
+        'appointment_date': appointmentDateTime.toUtc().toIso8601String(),
         'status': 'pending',
         'notes': notes,
       });

@@ -23,43 +23,27 @@ class _StatsScreenState extends State<StatsScreen> {
     _loadStats();
   }
 
-  DateTime get _startDate {
-    final now = DateTime.now();
-    switch (_selectedPeriod) {
-      case 1:
-        return DateTime(now.year, now.month, now.day)
-            .subtract(const Duration(days: 6));
-      case 2:
-        return DateTime(now.year, now.month, now.day)
-            .subtract(const Duration(days: 29));
-      default:
-        return DateTime(now.year, now.month, now.day);
-    }
-  }
-
-  DateTime get _endDate {
-    final now = DateTime.now();
-    return DateTime(now.year, now.month, now.day + 1);
-  }
-
   Future<void> _loadStats() async {
     setState(() => _isLoading = true);
     try {
+      final now = DateTime.now();
+      final todayStart = DateTime(now.year, now.month, now.day);
+      final days = _selectedPeriod == 0 ? 1 : (_selectedPeriod == 1 ? 7 : 30);
+      final localStart = todayStart.subtract(Duration(days: days - 1));
+      final localEnd = todayStart.add(const Duration(days: 1));
+
       final data = await Supabase.instance.client
           .from('appointments')
           .select('status, appointment_date')
-          .gte('appointment_date', _startDate.toIso8601String())
-          .lt('appointment_date', _endDate.toIso8601String());
+          .gte('appointment_date', localStart.toUtc().toIso8601String())
+          .lt('appointment_date', localEnd.toUtc().toIso8601String());
 
       final list = List<Map<String, dynamic>>.from(data);
 
-      // Өдөр тус бүрээр группэлэх — status-аар ялгана
       final Map<String, Map<String, int>> byDay = {};
-      final days = _selectedPeriod == 0 ? 1 : (_selectedPeriod == 1 ? 7 : 30);
-
       for (int i = days - 1; i >= 0; i--) {
-        final day = DateTime.now().subtract(Duration(days: i));
-        final key = '${day.month}/${day.day}';
+        final d = todayStart.subtract(Duration(days: i));
+        final key = '${d.month}/${d.day}';
         byDay[key] = {'done': 0, 'pending': 0, 'cancelled': 0};
       }
 
@@ -67,13 +51,13 @@ class _StatsScreenState extends State<StatsScreen> {
         final dt = DateTime.parse(appt['appointment_date']).toLocal();
         final key = '${dt.month}/${dt.day}';
         if (byDay.containsKey(key)) {
-          final status = appt['status'] ?? 'pending';
+          final status = appt['status']?.toString() ?? '';
           if (status == 'done') {
-            byDay[key]!['done'] = (byDay[key]!['done'] ?? 0) + 1;
+            byDay[key]!['done'] = byDay[key]!['done']! + 1;
           } else if (status == 'cancelled') {
-            byDay[key]!['cancelled'] = (byDay[key]!['cancelled'] ?? 0) + 1;
+            byDay[key]!['cancelled'] = byDay[key]!['cancelled']! + 1;
           } else {
-            byDay[key]!['pending'] = (byDay[key]!['pending'] ?? 0) + 1;
+            byDay[key]!['pending'] = byDay[key]!['pending']! + 1;
           }
         }
       }
@@ -132,7 +116,7 @@ class _StatsScreenState extends State<StatsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Хугацаа сонгох
+            // ── Хугацаа сонгох ──
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
@@ -143,21 +127,28 @@ class _StatsScreenState extends State<StatsScreen> {
                 children: [
                   const Icon(Icons.calendar_today,
                       color: Color(0xFF6B21A8), size: 18),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   const Text('Хугацаа:',
-                      style: TextStyle(fontWeight: FontWeight.w600)),
-                  const SizedBox(width: 12),
-                  _buildPeriodTab('Өнөөдөр', 0),
+                      style:
+                          TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
                   const SizedBox(width: 8),
-                  _buildPeriodTab('7 хоног', 1),
-                  const SizedBox(width: 8),
-                  _buildPeriodTab('1 сар', 2),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Expanded(child: _buildPeriodTab('Өнөөдөр', 0)),
+                        const SizedBox(width: 6),
+                        Expanded(child: _buildPeriodTab('7 хоног', 1)),
+                        const SizedBox(width: 6),
+                        Expanded(child: _buildPeriodTab('1 сар', 2)),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
             const SizedBox(height: 16),
 
-            // Статистик картууд
+            // ── Статистик картууд ──
             _isLoading
                 ? const Center(
                     child: Padding(
@@ -186,7 +177,7 @@ class _StatsScreenState extends State<StatsScreen> {
                   ),
             const SizedBox(height: 16),
 
-            // Chart хэсэг
+            // ── Chart ──
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -201,43 +192,36 @@ class _StatsScreenState extends State<StatsScreen> {
                           fontWeight: FontWeight.bold,
                           fontSize: 15,
                           color: Color(0xFF1A2B47))),
-                  const SizedBox(height: 12),
-
-                  // Тайлбар (legend)
-                  Row(
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 4,
                     children: [
                       _buildLegend(const Color(0xFF22C55E), 'Үйлчлүүлсэн'),
-                      const SizedBox(width: 16),
                       _buildLegend(const Color(0xFFFF6B35), 'Хүлээж байгаа'),
-                      const SizedBox(width: 16),
                       _buildLegend(const Color(0xFFEF4444), 'Цуцалсан'),
                     ],
                   ),
                   const SizedBox(height: 16),
-
-                  _isLoading
-                      ? const Center(child: CircularProgressIndicator())
-                      : _totalCount == 0
-                          ? const Center(
-                              child: Padding(
-                                padding: EdgeInsets.symmetric(vertical: 20),
-                                child: Column(
-                                  children: [
-                                    Icon(Icons.bar_chart,
-                                        size: 48, color: Colors.grey),
-                                    SizedBox(height: 8),
-                                    Text(
-                                        'Тухайн хугацаанд өгөгдөл байхгүй байна',
-                                        style: TextStyle(
-                                            color: Colors.grey, fontSize: 13)),
-                                  ],
-                                ),
-                              ),
-                            )
-                          : SizedBox(
-                              height: 120,
-                              child: ClipRect(child: _buildStackedBarChart()),
-                            ),
+                  if (_isLoading)
+                    const Center(child: CircularProgressIndicator())
+                  else if (_totalCount == 0)
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: 20),
+                        child: Column(
+                          children: [
+                            Icon(Icons.bar_chart, size: 48, color: Colors.grey),
+                            SizedBox(height: 8),
+                            Text('Тухайн хугацаанд өгөгдөл байхгүй байна',
+                                style: TextStyle(
+                                    color: Colors.grey, fontSize: 13)),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    _buildChart(),
                 ],
               ),
             ),
@@ -255,17 +239,18 @@ class _StatsScreenState extends State<StatsScreen> {
         _loadStats();
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        padding: const EdgeInsets.symmetric(vertical: 7),
         decoration: BoxDecoration(
           color: isActive ? const Color(0xFF6B21A8) : const Color(0xFFE9ECEF),
           borderRadius: BorderRadius.circular(20),
         ),
+        alignment: Alignment.center,
         child: Text(
           label,
           style: TextStyle(
             color: isActive ? Colors.white : Colors.grey,
             fontWeight: FontWeight.w600,
-            fontSize: 13,
+            fontSize: 12,
           ),
         ),
       ),
@@ -300,6 +285,7 @@ class _StatsScreenState extends State<StatsScreen> {
 
   Widget _buildLegend(Color color, String label) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Container(
           width: 12,
@@ -313,91 +299,201 @@ class _StatsScreenState extends State<StatsScreen> {
     );
   }
 
-  Widget _buildStackedBarChart() {
-    final maxTotal = _chartData
-        .map((d) => (d['total'] as int))
+  Widget _buildChart() {
+    final maxVal = _chartData
+        .map((d) => [
+              d['done'] as int,
+              d['pending'] as int,
+              d['cancelled'] as int,
+            ].fold(0, (a, b) => a > b ? a : b))
         .fold(0, (a, b) => a > b ? a : b);
-    final displayMax = maxTotal == 0 ? 1 : maxTotal;
-    const barHeight = 80.0;
 
-    return SizedBox(
-      height: barHeight + 20,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: _chartData.map((data) {
-          final total = data['total'] as int;
-          final done = data['done'] as int;
-          final pending = data['pending'] as int;
-          final cancelled = data['cancelled'] as int;
-          final totalHeight = (total / displayMax) * barHeight;
-
-          return Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 2),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  if (total > 0)
-                    Text('$total',
-                        style: const TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF6B21A8))),
-                  const SizedBox(height: 2),
-                  // Stacked bar
-                  SizedBox(
-                    height: totalHeight,
-                    child: Column(
-                      children: [
-                        // Цуцалсан — дээд
-                        if (cancelled > 0)
-                          SizedBox(
-                            height: totalHeight * cancelled / total,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFEF4444),
-                                borderRadius: BorderRadius.vertical(
-                                  top: const Radius.circular(4),
-                                ),
-                              ),
-                            ),
-                          ),
-                        // Хүлээж байгаа — дунд
-                        if (pending > 0)
-                          SizedBox(
-                            height: totalHeight * pending / total,
-                            child: Container(
-                              color: const Color(0xFFFF6B35),
-                            ),
-                          ),
-                        // Үйлчлүүлсэн — доод
-                        if (done > 0)
-                          SizedBox(
-                            height: totalHeight * done / total,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF22C55E),
-                                borderRadius: BorderRadius.vertical(
-                                  bottom: const Radius.circular(4),
-                                  top: Radius.circular(
-                                      pending == 0 && cancelled == 0 ? 4 : 0),
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(data['label'],
-                      style: const TextStyle(fontSize: 9, color: Colors.grey),
-                      overflow: TextOverflow.ellipsis),
-                ],
-              ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SizedBox(
+          height: 220,
+          child: CustomPaint(
+            painter: GroupedBarPainter(
+              data: _chartData,
+              maxVal: maxVal == 0 ? 1 : maxVal,
+              colorDone: const Color(0xFF22C55E),
+              colorPending: const Color(0xFFFF6B35),
+              colorCancelled: const Color(0xFFEF4444),
+              colorEmpty: const Color(0xFFE9ECEF),
+              colorLabel: Colors.grey,
             ),
-          );
-        }).toList(),
-      ),
+            size: Size(constraints.maxWidth, 220),
+          ),
+        );
+      },
     );
   }
+}
+
+// ── Grouped Bar Chart Painter ──
+// Өдөр бүр 3 тусдаа багана: ногоон | улбар шар | улаан
+class GroupedBarPainter extends CustomPainter {
+  final List<Map<String, dynamic>> data;
+  final int maxVal;
+  final Color colorDone;
+  final Color colorPending;
+  final Color colorCancelled;
+  final Color colorEmpty;
+  final Color colorLabel;
+
+  static const double labelH = 18.0;
+  static const double countH = 14.0;
+  static const double topPad = 6.0;
+  static const double barRadius = 3.0;
+  static const double groupGap = 3.0; // багана хоорондын зай
+  static const double slotGap = 4.0; // өдөр хоорондын зай
+
+  const GroupedBarPainter({
+    required this.data,
+    required this.maxVal,
+    required this.colorDone,
+    required this.colorPending,
+    required this.colorCancelled,
+    required this.colorEmpty,
+    required this.colorLabel,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (data.isEmpty) return;
+
+    final double barAreaH = size.height - labelH - countH - topPad;
+    final int n = data.length;
+    final double slotW = size.width / n;
+    // Нэг өдрийн 3 багана + 2 зай
+    final double barW = (slotW - slotGap * 2 - groupGap * 2) / 3;
+
+    for (int i = 0; i < n; i++) {
+      final d = data[i];
+      final int done = d['done'] as int;
+      final int pending = d['pending'] as int;
+      final int cancelled = d['cancelled'] as int;
+      final int total = d['total'] as int;
+      final String label = d['label'] as String;
+
+      final double slotLeft = slotW * i + slotGap;
+      final double barBottom = topPad + countH + barAreaH;
+      final double cx = slotW * i + slotW / 2;
+
+      if (total == 0) {
+        // Хоосон өдөр — нимгэн саарал зураас
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            Rect.fromLTWH(slotLeft, barBottom - 2, slotW - slotGap * 2, 2),
+            const Radius.circular(1),
+          ),
+          Paint()..color = colorEmpty,
+        );
+      } else {
+        // Багана 1: Done (ногоон) — зүүн
+        final double x0 = slotLeft;
+        // Багана 2: Pending (улбар шар) — дунд
+        final double x1 = slotLeft + barW + groupGap;
+        // Багана 3: Cancelled (улаан) — баруун
+        final double x2 = slotLeft + (barW + groupGap) * 2;
+
+        _drawBar(canvas,
+            x: x0,
+            barBottom: barBottom,
+            barW: barW,
+            barAreaH: barAreaH,
+            value: done,
+            color: colorDone);
+
+        _drawBar(canvas,
+            x: x1,
+            barBottom: barBottom,
+            barW: barW,
+            barAreaH: barAreaH,
+            value: pending,
+            color: colorPending);
+
+        _drawBar(canvas,
+            x: x2,
+            barBottom: barBottom,
+            barW: barW,
+            barAreaH: barAreaH,
+            value: cancelled,
+            color: colorCancelled);
+      }
+
+      // Огноо шошго
+      _txt(
+        canvas,
+        label,
+        TextStyle(color: colorLabel, fontSize: 9, fontWeight: FontWeight.w400),
+        Offset(cx, size.height - labelH / 2),
+      );
+    }
+  }
+
+  void _drawBar(
+    Canvas canvas, {
+    required double x,
+    required double barBottom,
+    required double barW,
+    required double barAreaH,
+    required int value,
+    required Color color,
+  }) {
+    if (value == 0) {
+      // 0 үед нимгэн саарал зураас
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(x, barBottom - 2, barW, 2),
+          const Radius.circular(1),
+        ),
+        Paint()..color = colorEmpty,
+      );
+      return;
+    }
+
+    final double h = (value / maxVal) * barAreaH;
+    final double top = barBottom - h;
+
+    // Багана
+    canvas.drawRRect(
+      RRect.fromRectAndCorners(
+        Rect.fromLTWH(x, top, barW, h),
+        topLeft: const Radius.circular(barRadius),
+        topRight: const Radius.circular(barRadius),
+        bottomLeft: const Radius.circular(1),
+        bottomRight: const Radius.circular(1),
+      ),
+      Paint()..color = color,
+    );
+
+    // Тоо — баганын дээд талд
+    final style = TextStyle(
+      color: color,
+      fontSize: 10,
+      fontWeight: FontWeight.bold,
+    );
+    final tp = TextPainter(
+      text: TextSpan(text: '$value', style: style),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    tp.paint(
+      canvas,
+      Offset(x + barW / 2 - tp.width / 2, top - tp.height - 2),
+    );
+  }
+
+  void _txt(Canvas canvas, String text, TextStyle style, Offset center) {
+    final tp = TextPainter(
+        text: TextSpan(text: text, style: style),
+        textDirection: TextDirection.ltr)
+      ..layout();
+    tp.paint(
+        canvas, Offset(center.dx - tp.width / 2, center.dy - tp.height / 2));
+  }
+
+  @override
+  bool shouldRepaint(GroupedBarPainter old) =>
+      old.data != data || old.maxVal != maxVal;
 }
