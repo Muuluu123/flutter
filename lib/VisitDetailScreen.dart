@@ -15,6 +15,17 @@ class _VisitDetailScreenState extends State<VisitDetailScreen> {
   final TextEditingController _prescriptionController = TextEditingController();
   bool _isDone = false;
   bool _isLoading = false;
+  bool _isEditMode = false; // засах горим
+
+  @override
+  void initState() {
+    super.initState();
+    final notes = _parseNotes(widget.appointment['notes']);
+    // Одоо байгаа утгыг controller-д ачааллах
+    _diagnosisController.text = notes['diagnosis'] ?? '';
+    _prescriptionController.text = notes['prescription'] ?? '';
+    _isDone = widget.appointment['status'] == 'done';
+  }
 
   Map<String, String> _parseNotes(String? notes) {
     if (notes == null) return {};
@@ -58,8 +69,11 @@ class _VisitDetailScreenState extends State<VisitDetailScreen> {
       if (_prescriptionController.text.isNotEmpty)
         updatedNotes += '\nЖор: ${_prescriptionController.text}';
 
+      String newStatus = widget.appointment['status'];
+      if (_isDone) newStatus = 'done';
+
       await Supabase.instance.client.from('appointments').update({
-        'status': _isDone ? 'done' : widget.appointment['status'],
+        'status': newStatus,
         'notes': updatedNotes,
       }).eq('id', widget.appointment['id']);
 
@@ -69,6 +83,7 @@ class _VisitDetailScreenState extends State<VisitDetailScreen> {
             content: Text('Амжилттай хадгалагдлаа!'),
             backgroundColor: Colors.green),
       );
+      setState(() => _isEditMode = false);
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
@@ -87,6 +102,8 @@ class _VisitDetailScreenState extends State<VisitDetailScreen> {
             ?['full_name'] ??
         'Тодорхойгүй';
     final status = widget.appointment['status'] ?? 'pending';
+    final isPending = status == 'pending' || status == 'confirmed';
+    final isDone = status == 'done';
 
     return Scaffold(
       backgroundColor: const Color(0xFFE8F1FF),
@@ -108,6 +125,22 @@ class _VisitDetailScreenState extends State<VisitDetailScreen> {
                     fontSize: 15)),
           ],
         ),
+        actions: [
+          // done статустай үед засах товч
+          if (isDone)
+            TextButton.icon(
+              onPressed: () => setState(() => _isEditMode = !_isEditMode),
+              icon: Icon(
+                _isEditMode ? Icons.visibility : Icons.edit_outlined,
+                size: 18,
+                color: const Color(0xFF7C3AED),
+              ),
+              label: Text(
+                _isEditMode ? 'Харах' : 'Засах',
+                style: const TextStyle(color: Color(0xFF7C3AED)),
+              ),
+            ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -129,12 +162,9 @@ class _VisitDetailScreenState extends State<VisitDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Өвчтний нэр
                   _buildInfoRow(
                       Icons.person_outline, 'Өвчтний нэр', patientName),
                   const Divider(height: 24),
-
-                  // Огноо & Цаг
                   Row(
                     children: [
                       Expanded(
@@ -154,15 +184,11 @@ class _VisitDetailScreenState extends State<VisitDetailScreen> {
                     ],
                   ),
                   const Divider(height: 24),
-
-                  // Тасаг / Эмч
                   _buildInfoRow(
                     Icons.local_hospital_outlined,
                     'Тасаг / Эмч',
                     '${notes['department'] ?? '-'}${notes['doctor'] != null ? ' - ${notes['doctor']}' : ''}',
                   ),
-
-                  // Шалтгаан
                   if (notes['reason'] != null) ...[
                     const Divider(height: 24),
                     _buildInfoRow(Icons.description_outlined, 'Шалтгаан',
@@ -173,8 +199,8 @@ class _VisitDetailScreenState extends State<VisitDetailScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Үйлчлүүлсэн эсэх checkbox — зөвхөн pending үед
-            if (status == 'pending' || status == 'confirmed')
+            // Pending үед checkbox
+            if (isPending)
               Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -199,146 +225,292 @@ class _VisitDetailScreenState extends State<VisitDetailScreen> {
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
-            const SizedBox(height: 16),
+            if (isPending) const SizedBox(height: 16),
 
-            // Оношлогоо
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: [
-                  BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      blurRadius: 8)
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.description_outlined,
-                          color: Color(0xFF7C3AED), size: 18),
-                      SizedBox(width: 8),
-                      Text('Оношлогоо',
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              color: Color(0xFF1A2B47))),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: _diagnosisController,
-                    maxLines: 3,
-                    decoration: InputDecoration(
-                      hintText: 'Оношлогоо бичих...',
-                      hintStyle: const TextStyle(color: Colors.grey),
-                      filled: true,
-                      fillColor: const Color(0xFFF1F3F5),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide.none,
-                      ),
-                      contentPadding: const EdgeInsets.all(14),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Жор
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: [
-                  BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      blurRadius: 8)
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.edit_outlined,
-                          color: Color(0xFF7C3AED), size: 18),
-                      SizedBox(width: 8),
-                      Text('Жор',
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              color: Color(0xFF1A2B47))),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: _prescriptionController,
-                    maxLines: 3,
-                    decoration: InputDecoration(
-                      hintText: 'Жор, зөвлөмж бичих...',
-                      hintStyle: const TextStyle(color: Colors.grey),
-                      filled: true,
-                      fillColor: const Color(0xFFF1F3F5),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide.none,
-                      ),
-                      contentPadding: const EdgeInsets.all(14),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Товчлуурууд
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      side: const BorderSide(color: Color(0xFF7C3AED)),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                    ),
-                    child: const Text('Буцах',
-                        style:
-                            TextStyle(color: Color(0xFF7C3AED), fontSize: 16)),
-                  ),
+            // DONE + харах горим: оношлогоо, жор уншигдах байдлаар
+            if (isDone && !_isEditMode) ...[
+              // Оношлогоо харах
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [
+                    BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 8)
+                  ],
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _save,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF7C3AED),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                    ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                                color: Colors.white, strokeWidth: 2))
-                        : const Text('Хадгалах',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.description_outlined,
+                            color: Color(0xFF22C55E), size: 18),
+                        SizedBox(width: 8),
+                        Text('Оношлогоо',
                             style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold)),
-                  ),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                color: Color(0xFF1A2B47))),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: notes['diagnosis'] != null
+                            ? const Color(0xFFF0FFF4)
+                            : const Color(0xFFF8F9FA),
+                        borderRadius: BorderRadius.circular(10),
+                        border: notes['diagnosis'] != null
+                            ? Border.all(
+                                color: const Color(0xFF22C55E)
+                                    .withValues(alpha: 0.3))
+                            : null,
+                      ),
+                      child: Text(
+                        notes['diagnosis'] ?? 'Оношлогоо бичигдээгүй байна',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: notes['diagnosis'] != null
+                              ? const Color(0xFF1A2B47)
+                              : Colors.grey,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 16),
+
+              // Жор харах
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [
+                    BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 8)
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.edit_outlined,
+                            color: Color(0xFF1D61FF), size: 18),
+                        SizedBox(width: 8),
+                        Text('Жор',
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                color: Color(0xFF1A2B47))),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: notes['prescription'] != null
+                            ? const Color(0xFFF0F4FF)
+                            : const Color(0xFFF8F9FA),
+                        borderRadius: BorderRadius.circular(10),
+                        border: notes['prescription'] != null
+                            ? Border.all(
+                                color: const Color(0xFF1D61FF)
+                                    .withValues(alpha: 0.3))
+                            : null,
+                      ),
+                      child: Text(
+                        notes['prescription'] ?? 'Жор бичигдээгүй байна',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: notes['prescription'] != null
+                              ? const Color(0xFF1A2B47)
+                              : Colors.grey,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Буцах товч
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    side: const BorderSide(color: Color(0xFF7C3AED)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: const Text('Буцах',
+                      style: TextStyle(color: Color(0xFF7C3AED), fontSize: 16)),
+                ),
+              ),
+            ],
+
+            // Pending үед эсвэл done + засах горим: бичих талбарууд
+            if (isPending || (isDone && _isEditMode)) ...[
+              // Оношлогоо бичих
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [
+                    BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 8)
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.description_outlined,
+                            color: Color(0xFF7C3AED), size: 18),
+                        SizedBox(width: 8),
+                        Text('Оношлогоо',
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                color: Color(0xFF1A2B47))),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: _diagnosisController,
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        hintText: 'Оношлогоо бичих...',
+                        hintStyle: const TextStyle(color: Colors.grey),
+                        filled: true,
+                        fillColor: const Color(0xFFF1F3F5),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.all(14),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Жор бичих
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [
+                    BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 8)
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.edit_outlined,
+                            color: Color(0xFF7C3AED), size: 18),
+                        SizedBox(width: 8),
+                        Text('Жор',
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                color: Color(0xFF1A2B47))),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: _prescriptionController,
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        hintText: 'Жор, зөвлөмж бичих...',
+                        hintStyle: const TextStyle(color: Colors.grey),
+                        filled: true,
+                        fillColor: const Color(0xFFF1F3F5),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.all(14),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Товчлуурууд
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () {
+                        if (isDone && _isEditMode) {
+                          setState(() => _isEditMode = false);
+                        } else {
+                          Navigator.pop(context);
+                        }
+                      },
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        side: const BorderSide(color: Color(0xFF7C3AED)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                      ),
+                      child: Text(
+                        isDone && _isEditMode ? 'Болих' : 'Буцах',
+                        style: const TextStyle(
+                            color: Color(0xFF7C3AED), fontSize: 16),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _save,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF7C3AED),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                      ),
+                      child: _isLoading
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                  color: Colors.white, strokeWidth: 2))
+                          : const Text('Хадгалах',
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),

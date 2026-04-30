@@ -47,7 +47,6 @@ class _AppointmentHistoryScreenState extends State<AppointmentHistoryScreen> {
   }
 
   Future<void> _cancelAppointment(String appointmentId) async {
-    // Баталгаажуулах dialog
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -97,7 +96,7 @@ class _AppointmentHistoryScreenState extends State<AppointmentHistoryScreen> {
     }
   }
 
-  // Notes-оос тасаг, эмч, шалтгааныг задлах
+  // Notes-оос тасаг, эмч, шалтгаан, оношлогоо, жорыг задлах
   Map<String, String> _parseNotes(String? notes) {
     if (notes == null) return {};
     final result = <String, String>{};
@@ -108,6 +107,10 @@ class _AppointmentHistoryScreenState extends State<AppointmentHistoryScreen> {
         result['doctor'] = line.replaceFirst('Эмч: ', '');
       if (line.startsWith('Шалтгаан: '))
         result['reason'] = line.replaceFirst('Шалтгаан: ', '');
+      if (line.startsWith('Оношлогоо: '))
+        result['diagnosis'] = line.replaceFirst('Оношлогоо: ', '');
+      if (line.startsWith('Жор: '))
+        result['prescription'] = line.replaceFirst('Жор: ', '');
     }
     return result;
   }
@@ -168,6 +171,185 @@ class _AppointmentHistoryScreenState extends State<AppointmentHistoryScreen> {
     );
   }
 
+  void _showVisitDetail(Map<String, dynamic> appt) {
+    final notes = _parseNotes(appt['notes']);
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Гарчиг
+            Row(
+              children: [
+                const Icon(Icons.description_rounded,
+                    color: Color(0xFF22C55E), size: 22),
+                const SizedBox(width: 10),
+                const Text(
+                  'Үйлчилгээний дэлгэрэнгүй',
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Color(0xFF1A2B47)),
+                ),
+                const Spacer(),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close, color: Colors.grey),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const Divider(),
+            const SizedBox(height: 12),
+
+            // Тасаг
+            if (notes['department'] != null)
+              _buildDetailRow(
+                  Icons.local_hospital_outlined, 'Тасаг', notes['department']!),
+
+            // Эмч
+            if (notes['doctor'] != null)
+              _buildDetailRow(Icons.person_outline, 'Эмч', notes['doctor']!),
+
+            // Шалтгаан
+            if (notes['reason'] != null)
+              _buildDetailRow(
+                  Icons.description_outlined, 'Шалтгаан', notes['reason']!),
+
+            // Оношлогоо
+            if (notes['diagnosis'] != null) ...[
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0FFF4),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                      color: const Color(0xFF22C55E).withValues(alpha: 0.3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: const [
+                        Icon(Icons.description_outlined,
+                            color: Color(0xFF22C55E), size: 16),
+                        SizedBox(width: 6),
+                        Text('Оношлогоо',
+                            style: TextStyle(
+                                color: Color(0xFF22C55E),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13)),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(notes['diagnosis']!,
+                        style: const TextStyle(
+                            fontSize: 14, color: Color(0xFF1A2B47))),
+                  ],
+                ),
+              ),
+            ],
+
+            // Жор
+            if (notes['prescription'] != null) ...[
+              const SizedBox(height: 10),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0F4FF),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                      color: const Color(0xFF1D61FF).withValues(alpha: 0.3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: const [
+                        Icon(Icons.edit_outlined,
+                            color: Color(0xFF1D61FF), size: 16),
+                        SizedBox(width: 6),
+                        Text('Жор',
+                            style: TextStyle(
+                                color: Color(0xFF1D61FF),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13)),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(notes['prescription']!,
+                        style: const TextStyle(
+                            fontSize: 14, color: Color(0xFF1A2B47))),
+                  ],
+                ),
+              ),
+            ],
+
+            // Оношлогоо/жор байхгүй бол мэдэгдэл
+            if (notes['diagnosis'] == null &&
+                notes['prescription'] == null) ...[
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8F9FA),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.grey, size: 16),
+                    SizedBox(width: 8),
+                    Text('Оношлогоо, жор бичигдээгүй байна',
+                        style: TextStyle(color: Colors.grey, fontSize: 13)),
+                  ],
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 16, color: Colors.grey),
+          const SizedBox(width: 8),
+          Text('$label: ',
+              style: const TextStyle(color: Colors.grey, fontSize: 13)),
+          Expanded(
+            child: Text(value,
+                style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1A2B47))),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -218,170 +400,233 @@ class _AppointmentHistoryScreenState extends State<AppointmentHistoryScreen> {
                       final status = appt['status'] ?? 'pending';
                       final canCancel =
                           status == 'pending' || status == 'confirmed';
+                      final isDone = status == 'done';
 
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(14),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.05),
-                              blurRadius: 8,
-                              spreadRadius: 1,
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Огноо хайрцаг
-                            Container(
-                              width: 56,
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFEEF2FF),
-                                borderRadius: BorderRadius.circular(10),
+                      return GestureDetector(
+                        onTap: isDone ? () => _showVisitDetail(appt) : null,
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.05),
+                                blurRadius: 8,
+                                spreadRadius: 1,
                               ),
-                              child: Column(
-                                children: [
-                                  const Icon(Icons.calendar_month_rounded,
-                                      color: Color(0xFF1D61FF), size: 22),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    _formatDay(appt['appointment_date']),
-                                    style: const TextStyle(
-                                      color: Color(0xFF1D61FF),
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-
-                            // Мэдээлэл
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        notes['department'] ??
-                                            'Тасаг тодорхойгүй',
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16,
-                                          color: Color(0xFF1A2B47),
-                                        ),
-                                      ),
-                                      _buildStatusBadge(status),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 6),
-
-                                  // Цаг
-                                  Row(
-                                    children: [
-                                      const Icon(Icons.access_time,
-                                          size: 14, color: Colors.grey),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        _formatDateTime(
-                                            appt['appointment_date']),
-                                        style: const TextStyle(
-                                            color: Colors.grey, fontSize: 13),
-                                      ),
-                                    ],
-                                  ),
-
-                                  // Эмч
-                                  if (notes['doctor'] != null) ...[
+                            ],
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Огноо хайрцаг
+                              Container(
+                                width: 56,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEEF2FF),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Column(
+                                  children: [
+                                    const Icon(Icons.calendar_month_rounded,
+                                        color: Color(0xFF1D61FF), size: 22),
                                     const SizedBox(height: 4),
+                                    Text(
+                                      _formatDay(appt['appointment_date']),
+                                      style: const TextStyle(
+                                        color: Color(0xFF1D61FF),
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+
+                              // Мэдээлэл
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          notes['department'] ??
+                                              'Тасаг тодорхойгүй',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                            color: Color(0xFF1A2B47),
+                                          ),
+                                        ),
+                                        _buildStatusBadge(status),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 6),
+
+                                    // Цаг
                                     Row(
                                       children: [
-                                        const Icon(Icons.person_outline,
+                                        const Icon(Icons.access_time,
                                             size: 14, color: Colors.grey),
                                         const SizedBox(width: 4),
                                         Text(
-                                          notes['doctor']!,
+                                          _formatDateTime(
+                                              appt['appointment_date']),
                                           style: const TextStyle(
                                               color: Colors.grey, fontSize: 13),
                                         ),
                                       ],
                                     ),
-                                  ],
 
-                                  // Шалтгаан
-                                  if (notes['reason'] != null) ...[
-                                    const SizedBox(height: 4),
-                                    Row(
-                                      children: [
-                                        const Icon(Icons.description_outlined,
-                                            size: 14, color: Colors.grey),
-                                        const SizedBox(width: 4),
-                                        Expanded(
-                                          child: Text(
-                                            notes['reason']!,
+                                    // Эмч
+                                    if (notes['doctor'] != null) ...[
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.person_outline,
+                                              size: 14, color: Colors.grey),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            notes['doctor']!,
                                             style: const TextStyle(
                                                 color: Colors.grey,
                                                 fontSize: 13),
-                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+
+                                    // Шалтгаан
+                                    if (notes['reason'] != null) ...[
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.description_outlined,
+                                              size: 14, color: Colors.grey),
+                                          const SizedBox(width: 4),
+                                          Expanded(
+                                            child: Text(
+                                              notes['reason']!,
+                                              style: const TextStyle(
+                                                  color: Colors.grey,
+                                                  fontSize: 13),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+
+                                    // Оношлогоо/жор байвал товч харуулах
+                                    if (isDone) ...[
+                                      const SizedBox(height: 8),
+                                      Row(
+                                        children: [
+                                          if (notes['diagnosis'] != null)
+                                            _buildInfoChip(
+                                                Icons.description_outlined,
+                                                'Онош',
+                                                const Color(0xFF22C55E)),
+                                          if (notes['diagnosis'] != null &&
+                                              notes['prescription'] != null)
+                                            const SizedBox(width: 6),
+                                          if (notes['prescription'] != null)
+                                            _buildInfoChip(Icons.edit_outlined,
+                                                'Жор', const Color(0xFF1D61FF)),
+                                          if (notes['diagnosis'] != null ||
+                                              notes['prescription'] != null)
+                                            const Spacer(),
+                                          if (notes['diagnosis'] != null ||
+                                              notes['prescription'] != null)
+                                            const Row(
+                                              children: [
+                                                Text('Дэлгэрэнгүй',
+                                                    style: TextStyle(
+                                                        fontSize: 12,
+                                                        color:
+                                                            Color(0xFF1D61FF))),
+                                                Icon(Icons.chevron_right,
+                                                    size: 16,
+                                                    color: Color(0xFF1D61FF)),
+                                              ],
+                                            ),
+                                        ],
+                                      ),
+                                    ],
+
+                                    // Цуцлах товч
+                                    if (canCancel) ...[
+                                      const SizedBox(height: 10),
+                                      GestureDetector(
+                                        onTap: () =>
+                                            _cancelAppointment(appt['id']),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 12, vertical: 6),
+                                          decoration: BoxDecoration(
+                                            border: Border.all(
+                                                color: Colors.red.shade300),
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(Icons.cancel_outlined,
+                                                  size: 16,
+                                                  color: Colors.red.shade400),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                'Цуцлах',
+                                                style: TextStyle(
+                                                  color: Colors.red.shade400,
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ),
-                                      ],
-                                    ),
-                                  ],
-
-                                  // Цуцлах товч — зөвхөн pending/confirmed үед
-                                  if (canCancel) ...[
-                                    const SizedBox(height: 10),
-                                    GestureDetector(
-                                      onTap: () =>
-                                          _cancelAppointment(appt['id']),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 12, vertical: 6),
-                                        decoration: BoxDecoration(
-                                          border: Border.all(
-                                              color: Colors.red.shade300),
-                                          borderRadius:
-                                              BorderRadius.circular(8),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(Icons.cancel_outlined,
-                                                size: 16,
-                                                color: Colors.red.shade400),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              'Цуцлах',
-                                              style: TextStyle(
-                                                color: Colors.red.shade400,
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
                                       ),
-                                    ),
+                                    ],
                                   ],
-                                ],
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       );
                     },
                   ),
                 ),
+    );
+  }
+
+  Widget _buildInfoChip(IconData icon, String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(label,
+              style: TextStyle(
+                  fontSize: 11, color: color, fontWeight: FontWeight.w600)),
+        ],
+      ),
     );
   }
 }
