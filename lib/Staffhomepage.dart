@@ -18,10 +18,40 @@ class _StaffHomeScreenState extends State<StaffHomeScreen> {
   int _cancelledCount = 0;
   bool _isLoading = true;
 
+  // Нэвтэрсэн хэрэглэгчийн мэдээлэл
+  String _doctorName = '';   // Эмчийн бүтэн нэр (жишээ: "Д-р Дулгуун")
+  bool _isAdmin = false;     // admin1 бол true — бүх цаг харна
+
   @override
   void initState() {
     super.initState();
-    _loadStats();
+    _loadUserInfo();
+  }
+
+  Future<void> _loadUserInfo() async {
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) return;
+
+      final profile = await Supabase.instance.client
+          .from('profiles')
+          .select('full_name')
+          .eq('id', user.id)
+          .single();
+
+      final fullName = profile['full_name'] ?? '';
+      // admin1 бүртгэлийг тусгай эрхтэй гэж үзнэ
+      final isAdmin = user.email == 'admin1@hospital.mn';
+
+      setState(() {
+        _doctorName = fullName;
+        _isAdmin = isAdmin;
+      });
+
+      await _loadStats();
+    } catch (e) {
+      await _loadStats();
+    }
   }
 
   Future<void> _loadStats() async {
@@ -31,13 +61,22 @@ class _StaffHomeScreenState extends State<StaffHomeScreen> {
       final startOfDay = DateTime(today.year, today.month, today.day);
       final endOfDay = startOfDay.add(const Duration(days: 1));
 
-      final data = await Supabase.instance.client
+      var query = Supabase.instance.client
           .from('appointments')
-          .select('status')
+          .select('status, notes')
           .gte('appointment_date', startOfDay.toIso8601String())
           .lt('appointment_date', endOfDay.toIso8601String());
 
-      final list = List<Map<String, dynamic>>.from(data);
+      final data = await query;
+      var list = List<Map<String, dynamic>>.from(data);
+
+      // Admin биш бол зөвхөн өөрийн цагуудыг тоолно
+      if (!_isAdmin && _doctorName.isNotEmpty) {
+        list = list.where((a) {
+          final notes = a['notes'] ?? '';
+          return notes.contains('Эмч: $_doctorName');
+        }).toList();
+      }
 
       setState(() {
         _totalCount = list.length;
@@ -59,8 +98,8 @@ class _StaffHomeScreenState extends State<StaffHomeScreen> {
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title:
-            const Text('Гарах', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('Гарах',
+            style: TextStyle(fontWeight: FontWeight.bold)),
         content: const Text('Та гарахдаа итгэлтэй байна уу?'),
         actions: [
           SizedBox(
@@ -89,7 +128,8 @@ class _StaffHomeScreenState extends State<StaffHomeScreen> {
                     borderRadius: BorderRadius.circular(10)),
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),
-              child: const Text('Үгүй', style: TextStyle(color: Colors.grey)),
+              child: const Text('Үгүй',
+                  style: TextStyle(color: Colors.grey)),
             ),
           ),
         ],
@@ -132,22 +172,22 @@ class _StaffHomeScreenState extends State<StaffHomeScreen> {
                             color: Colors.white, size: 30),
                       ),
                       const SizedBox(height: 10),
-                      const Text(
-                        'Эмнэлгийн\nлого',
+                      Text(
+                        _isAdmin ? 'Эмнэлгийн\nлого' : _doctorName,
                         textAlign: TextAlign.center,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF1A2B47),
                         ),
                       ),
-                      const Text(
-                        'Дотоод ажилтан',
-                        style: TextStyle(color: Colors.grey, fontSize: 13),
+                      Text(
+                        _isAdmin ? 'Администратор' : 'Дотоод ажилтан',
+                        style:
+                            const TextStyle(color: Colors.grey, fontSize: 13),
                       ),
                     ],
                   ),
-                  // Гарах товч
                   IconButton(
                     icon: const Icon(Icons.logout_rounded,
                         color: Color(0xFF6B21A8), size: 28),
@@ -162,7 +202,9 @@ class _StaffHomeScreenState extends State<StaffHomeScreen> {
                 onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (_) => TodayAppointmentsScreen())),
+                        builder: (_) => TodayAppointmentsScreen(
+                              doctorName: _isAdmin ? null : _doctorName,
+                            ))),
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 40),
@@ -175,10 +217,12 @@ class _StaffHomeScreenState extends State<StaffHomeScreen> {
                       const Icon(Icons.people_alt_outlined,
                           color: Colors.white, size: 60),
                       const SizedBox(height: 16),
-                      const Text(
-                        'Өнөөдрийн цаг авалтууд',
+                      Text(
+                        _isAdmin
+                            ? 'Өнөөдрийн цаг авалтууд'
+                            : 'Миний өнөөдрийн цагууд',
                         textAlign: TextAlign.center,
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
@@ -196,7 +240,8 @@ class _StaffHomeScreenState extends State<StaffHomeScreen> {
                 children: [
                   const Row(
                     children: [
-                      Icon(Icons.bar_chart, color: Color(0xFF6B21A8), size: 20),
+                      Icon(Icons.bar_chart,
+                          color: Color(0xFF6B21A8), size: 20),
                       SizedBox(width: 6),
                       Text(
                         'Өнөөдрийн статистик',
@@ -209,8 +254,13 @@ class _StaffHomeScreenState extends State<StaffHomeScreen> {
                   ),
                   TextButton(
                     onPressed: () {
-                      Navigator.push(context,
-                          MaterialPageRoute(builder: (_) => StatsScreen()));
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => StatsScreen(
+                                    doctorName:
+                                        _isAdmin ? null : _doctorName,
+                                  )));
                     },
                     child: const Text('Дэлгэрэнгүй →',
                         style: TextStyle(color: Color(0xFF6B21A8))),
@@ -222,8 +272,8 @@ class _StaffHomeScreenState extends State<StaffHomeScreen> {
               // Статистик картууд
               _isLoading
                   ? const Center(
-                      child:
-                          CircularProgressIndicator(color: Color(0xFF6B21A8)))
+                      child: CircularProgressIndicator(
+                          color: Color(0xFF6B21A8)))
                   : GridView.count(
                       crossAxisCount: 2,
                       shrinkWrap: true,
@@ -284,13 +334,17 @@ class _StaffHomeScreenState extends State<StaffHomeScreen> {
           Text(
             label,
             style: const TextStyle(
-                color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w500),
           ),
           const SizedBox(height: 4),
           Text(
             '$count',
             style: const TextStyle(
-                color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold),
+                color: Colors.white,
+                fontSize: 26,
+                fontWeight: FontWeight.bold),
           ),
         ],
       ),

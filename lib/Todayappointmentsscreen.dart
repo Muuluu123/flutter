@@ -3,7 +3,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'VisitDetailScreen.dart';
 
 class TodayAppointmentsScreen extends StatefulWidget {
-  const TodayAppointmentsScreen({super.key});
+  // doctorName == null бол бүх цагийг харна (admin), үгүй бол зөвхөн тухайн эмчийнхийг
+  final String? doctorName;
+
+  const TodayAppointmentsScreen({super.key, this.doctorName});
 
   @override
   State<TodayAppointmentsScreen> createState() =>
@@ -34,8 +37,18 @@ class _TodayAppointmentsScreenState extends State<TodayAppointmentsScreen> {
           .lt('appointment_date', endOfDay.toIso8601String())
           .order('appointment_date', ascending: true);
 
+      var list = List<Map<String, dynamic>>.from(data);
+
+      // Эмч нэвтэрсэн бол зөвхөн өөрийн цагуудыг шүүнэ
+      if (widget.doctorName != null && widget.doctorName!.isNotEmpty) {
+        list = list.where((a) {
+          final notes = a['notes'] ?? '';
+          return notes.contains('Эмч: ${widget.doctorName}');
+        }).toList();
+      }
+
       setState(() {
-        _appointments = List<Map<String, dynamic>>.from(data);
+        _appointments = list;
         _isLoading = false;
       });
     } catch (e) {
@@ -86,6 +99,10 @@ class _TodayAppointmentsScreenState extends State<TodayAppointmentsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final title = widget.doctorName != null
+        ? 'Миний өнөөдрийн цагууд'
+        : 'Өнөөдрийн цаг авалтууд';
+
     return Scaffold(
       backgroundColor: const Color(0xFFE8F1FF),
       appBar: AppBar(
@@ -95,15 +112,17 @@ class _TodayAppointmentsScreenState extends State<TodayAppointmentsScreen> {
           icon: const Icon(Icons.arrow_back, color: Color(0xFF1A2B47)),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.people_alt_outlined, color: Color(0xFF7C3AED)),
-            SizedBox(width: 8),
-            Text('Өнөөдрийн цаг авалтууд',
-                style: TextStyle(
-                    color: Color(0xFF1A2B47),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16)),
+            const Icon(Icons.people_alt_outlined, color: Color(0xFF7C3AED)),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(title,
+                  style: const TextStyle(
+                      color: Color(0xFF1A2B47),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16)),
+            ),
           ],
         ),
       ),
@@ -115,7 +134,7 @@ class _TodayAppointmentsScreenState extends State<TodayAppointmentsScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  // Дээд статистик хэсэг
+                  // Дээд статистик
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -158,7 +177,6 @@ class _TodayAppointmentsScreenState extends State<TodayAppointmentsScreen> {
                   ),
                   const SizedBox(height: 12),
 
-                  // Захиалгуудын жагсаалт
                   if (_appointments.isEmpty)
                     const Center(
                       child: Padding(
@@ -264,21 +282,24 @@ class _TodayAppointmentsScreenState extends State<TodayAppointmentsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(patientName,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              color: Color(0xFF1A2B47))),
+                      Expanded(
+                        child: Text(patientName,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: Color(0xFF1A2B47))),
+                      ),
+                      const SizedBox(width: 6),
                       _buildStatusBadge(status),
                     ],
                   ),
                   if (notes['reason'] != null) ...[
                     const SizedBox(height: 4),
                     Text(notes['reason']!,
-                        style:
-                            const TextStyle(color: Colors.grey, fontSize: 13)),
+                        style: const TextStyle(
+                            color: Colors.grey, fontSize: 13)),
                   ],
                   const SizedBox(height: 8),
                   Row(
@@ -296,24 +317,26 @@ class _TodayAppointmentsScreenState extends State<TodayAppointmentsScreen> {
                         const Icon(Icons.local_hospital_outlined,
                             size: 14, color: Colors.grey),
                         const SizedBox(width: 4),
-                        Text(notes['department']!,
-                            style: const TextStyle(
-                                color: Colors.grey, fontSize: 13)),
+                        Expanded(
+                          child: Text(notes['department']!,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  color: Colors.grey, fontSize: 13)),
+                        ),
                       ],
                     ],
                   ),
 
-                  // Үйлдлийн товчлуурууд
                   if (isPending) ...[
                     const SizedBox(height: 10),
                     Row(
                       children: [
-                        // Үйлчлүүлсэн болгох
                         Expanded(
                           child: GestureDetector(
                             onTap: () => _updateStatus(appt['id'], 'done'),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 7),
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 7),
                               decoration: BoxDecoration(
                                 color: const Color(0xFF22C55E),
                                 borderRadius: BorderRadius.circular(8),
@@ -328,14 +351,15 @@ class _TodayAppointmentsScreenState extends State<TodayAppointmentsScreen> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        // Цуцлах
                         GestureDetector(
-                          onTap: () => _updateStatus(appt['id'], 'cancelled'),
+                          onTap: () =>
+                              _updateStatus(appt['id'], 'cancelled'),
                           child: Container(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 14, vertical: 7),
                             decoration: BoxDecoration(
-                              border: Border.all(color: Colors.red.shade300),
+                              border:
+                                  Border.all(color: Colors.red.shade300),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text('Цуцлах',
@@ -393,7 +417,9 @@ class _TodayAppointmentsScreenState extends State<TodayAppointmentsScreen> {
           color: bgColor, borderRadius: BorderRadius.circular(20)),
       child: Text(label,
           style: TextStyle(
-              color: textColor, fontSize: 11, fontWeight: FontWeight.w600)),
+              color: textColor,
+              fontSize: 11,
+              fontWeight: FontWeight.w600)),
     );
   }
 }

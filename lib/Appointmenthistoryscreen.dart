@@ -220,12 +220,13 @@ class _AppointmentHistoryScreenState extends State<AppointmentHistoryScreen> {
 
             // Эмч
             if (notes['doctor'] != null)
-              _buildDetailRow(Icons.person_outline, 'Эмч', notes['doctor']!),
+              _buildDetailRow(
+                  Icons.person_outline, 'Эмч', notes['doctor']!),
 
             // Шалтгаан
             if (notes['reason'] != null)
-              _buildDetailRow(
-                  Icons.description_outlined, 'Шалтгаан', notes['reason']!),
+              _buildDetailRow(Icons.description_outlined, 'Шалтгаан',
+                  notes['reason']!),
 
             // Оношлогоо
             if (notes['diagnosis'] != null) ...[
@@ -236,8 +237,7 @@ class _AppointmentHistoryScreenState extends State<AppointmentHistoryScreen> {
                 decoration: BoxDecoration(
                   color: const Color(0xFFF0FFF4),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                      color: const Color(0xFF22C55E).withValues(alpha: 0.3)),
+                  border: Border.all(color: const Color(0xFF22C55E).withValues(alpha: 0.3)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -272,8 +272,7 @@ class _AppointmentHistoryScreenState extends State<AppointmentHistoryScreen> {
                 decoration: BoxDecoration(
                   color: const Color(0xFFF0F4FF),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                      color: const Color(0xFF1D61FF).withValues(alpha: 0.3)),
+                  border: Border.all(color: const Color(0xFF1D61FF).withValues(alpha: 0.3)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -300,8 +299,7 @@ class _AppointmentHistoryScreenState extends State<AppointmentHistoryScreen> {
             ],
 
             // Оношлогоо/жор байхгүй бол мэдэгдэл
-            if (notes['diagnosis'] == null &&
-                notes['prescription'] == null) ...[
+            if (notes['diagnosis'] == null && notes['prescription'] == null) ...[
               const SizedBox(height: 8),
               Container(
                 width: double.infinity,
@@ -454,18 +452,20 @@ class _AppointmentHistoryScreenState extends State<AppointmentHistoryScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
+                                      crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Text(
-                                          notes['department'] ??
-                                              'Тасаг тодорхойгүй',
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
-                                            color: Color(0xFF1A2B47),
+                                        Expanded(
+                                          child: Text(
+                                            notes['department'] ??
+                                                'Тасаг тодорхойгүй',
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                              color: Color(0xFF1A2B47),
+                                            ),
                                           ),
                                         ),
+                                        const SizedBox(width: 6),
                                         _buildStatusBadge(status),
                                       ],
                                     ),
@@ -509,8 +509,10 @@ class _AppointmentHistoryScreenState extends State<AppointmentHistoryScreen> {
                                       const SizedBox(height: 4),
                                       Row(
                                         children: [
-                                          const Icon(Icons.description_outlined,
-                                              size: 14, color: Colors.grey),
+                                          const Icon(
+                                              Icons.description_outlined,
+                                              size: 14,
+                                              color: Colors.grey),
                                           const SizedBox(width: 4),
                                           Expanded(
                                             child: Text(
@@ -539,8 +541,10 @@ class _AppointmentHistoryScreenState extends State<AppointmentHistoryScreen> {
                                               notes['prescription'] != null)
                                             const SizedBox(width: 6),
                                           if (notes['prescription'] != null)
-                                            _buildInfoChip(Icons.edit_outlined,
-                                                'Жор', const Color(0xFF1D61FF)),
+                                            _buildInfoChip(
+                                                Icons.edit_outlined,
+                                                'Жор',
+                                                const Color(0xFF1D61FF)),
                                           if (notes['diagnosis'] != null ||
                                               notes['prescription'] != null)
                                             const Spacer(),
@@ -551,8 +555,7 @@ class _AppointmentHistoryScreenState extends State<AppointmentHistoryScreen> {
                                                 Text('Дэлгэрэнгүй',
                                                     style: TextStyle(
                                                         fontSize: 12,
-                                                        color:
-                                                            Color(0xFF1D61FF))),
+                                                        color: Color(0xFF1D61FF))),
                                                 Icon(Icons.chevron_right,
                                                     size: 16,
                                                     color: Color(0xFF1D61FF)),

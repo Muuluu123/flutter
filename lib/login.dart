@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'homepage.dart';
 import 'Staffhomepage.dart';
 import 'Register.dart';
+import 'ForgotPasswordScreen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -158,7 +159,25 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 25),
+                const SizedBox(height: 16),
+                TextButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            ForgotPasswordScreen(isStaff: !isUser),
+                      ),
+                    );
+                  },
+                  child: const Text(
+                    'Нууц үгээ мартсан уу?',
+                    style: TextStyle(
+                        color: Color(0xFFFF6B35),
+                        fontWeight: FontWeight.w600),
+                  ),
+                ),
+                const SizedBox(height: 8),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -177,7 +196,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const Divider(height: 40, thickness: 0.5),
                 const Text(
-                  'Туршилтын хувьд:\nҮйлчлүүлэгч: demo@mail.com / demo123\nДотоод: admin@mail.com / admin123',
+                  'Туршилтын хувьд:\nDemo үйлчлүүлэгч: demo1 / demo123\nДотоод ажилтан: admin1 / admin123',
                   textAlign: TextAlign.center,
                   style:
                       TextStyle(color: Colors.grey, fontSize: 12, height: 1.5),
@@ -226,7 +245,41 @@ class _LoginScreenState extends State<LoginScreen> {
         final role = profile['role'];
         if (!mounted) return;
 
-        if (role == 'staff') {
+        // Сонгосон tab болон бүртгэлийн role тохирч байгаа эсэхийг шалгах
+        final bool isStaff = role == 'staff';
+        final bool isPatient = role == 'patient';
+
+        if (isUser && isStaff) {
+          // Үйлчлүүлэгч tab сонгосон боловч дотоод ажилтан account
+          await Supabase.instance.client.auth.signOut();
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                  'Энэ бүртгэл дотоод ажилтанд зориулагдсан байна. "Дотоод ажилтан" tab-г сонгож нэвтэрнэ үү.'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 4),
+            ),
+          );
+          return;
+        }
+
+        if (!isUser && isPatient) {
+          // Дотоод ажилтан tab сонгосон боловч үйлчлүүлэгч account
+          await Supabase.instance.client.auth.signOut();
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                  'Энэ бүртгэл үйлчлүүлэгчид зориулагдсан байна. "Үйлчлүүлэгч" tab-г сонгож нэвтэрнэ үү.'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 4),
+            ),
+          );
+          return;
+        }
+
+        if (isStaff) {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (context) => StaffHomeScreen()),

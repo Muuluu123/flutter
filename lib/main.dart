@@ -5,10 +5,8 @@ import 'package:flutter/foundation.dart';
 import 'login.dart';
 
 void main() async {
-  // Flutter-ийн суурь тохиргоог баталгаажуулах
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Supabase-ийг эхлүүлэхfl (Өөрийн URL болон Key-г энд оруулна)
   await Supabase.initialize(
     url: 'https://zjabynsrpuxzxoozlrca.supabase.co',
     anonKey: 'sb_publishable_3OMOwb-s99wL3SDjior3kg_LA4NqkV6',
@@ -17,12 +15,12 @@ void main() async {
   runApp(
     DevicePreview(
       enabled: !kReleaseMode,
+      tools: const [],  // Toolbar хасах
       builder: (context) => const MyApp(),
     ),
   );
 }
 
-// Supabase Client-ийг глобал байдлаар тодорхойлох
 final supabase = Supabase.instance.client;
 
 class MyApp extends StatelessWidget {
@@ -31,17 +29,58 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false, // Баруун дээд талын туузыг арилгах
+      debugShowCheckedModeBanner: false,
       title: 'Hospital App',
-      locale:
-          DevicePreview.locale(context), // DevicePreview-ийн хэлний тохиргоо
-      builder: DevicePreview.appBuilder, // DevicePreview-тэй холбох
+      locale: DevicePreview.locale(context),
+      builder: DevicePreview.appBuilder,
       theme: ThemeData(
         useMaterial3: true,
         primarySwatch: Colors.blue,
       ),
-      home: const HomePage(), // Үндсэн нүүр хуудас
+      home: const AuthGate(),
     );
+  }
+}
+
+// Auth state listener — recovery link дарагдвал login руу шидэнэ
+class AuthGate extends StatefulWidget {
+  const AuthGate({super.key});
+
+  @override
+  State<AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends State<AuthGate> {
+  @override
+  void initState() {
+    super.initState();
+    // Auth state өөрчлөлтийг сонсох
+    Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+      final event = data.event;
+      // Password recovery event гарвал sign out хийж login руу явуулна
+      if (event == AuthChangeEvent.passwordRecovery) {
+        Supabase.instance.client.auth.signOut();
+        if (mounted) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
+            (route) => false,
+          );
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                  'Нууц үг сэргээх боломжгүй. Администратортай холбогдоно уу.'),
+              backgroundColor: Colors.orange,
+              duration: Duration(seconds: 4),
+            ),
+          );
+        }
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return const HomePage();
   }
 }
 
@@ -52,15 +91,13 @@ class HomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        // Дэлгэцийн бүх талбайг дүүргэх
         width: double.infinity,
         height: double.infinity,
         decoration: const BoxDecoration(
-          // Градиент дэвсгэр өнгө
           gradient: LinearGradient(
             colors: [
-              Color(0xFF2196F3), // Цэнхэр
-              Color(0xFF21CBF3), // Цайвар цэнхэр
+              Color(0xFF2196F3),
+              Color(0xFF21CBF3),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -89,8 +126,8 @@ class HomePage extends StatelessWidget {
                   );
                 },
                 style: ElevatedButton.styleFrom(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 40, vertical: 15),
                   backgroundColor: Colors.white,
                   foregroundColor: Colors.blue[900],
                   shape: RoundedRectangleBorder(
@@ -99,7 +136,8 @@ class HomePage extends StatelessWidget {
                 ),
                 child: const Text(
                   'Орох',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style:
+                      TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ),
             ],
